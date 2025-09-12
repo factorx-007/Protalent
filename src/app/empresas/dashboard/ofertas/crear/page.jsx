@@ -161,9 +161,10 @@ export default function CrearOfertaPage() {
     setSubmitError('');
     setSuccess(false);
     try {
-      const empresaId = user?.Empresa?.id;
+      const empresaId = user?.empresa?.id;
       const payload = { ...data, empresaId };
       console.log('[CrearOfertaPage] Payload a enviar:', payload);
+      console.log('[CrearOfertaPage] EmpresaId extraído:', empresaId);
       if (!empresaId) {
         console.warn('[CrearOfertaPage] No se encontró la empresa asociada en user:', user);
         throw new Error('No se encontró la empresa asociada.');
