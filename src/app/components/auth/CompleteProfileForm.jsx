@@ -88,7 +88,7 @@ export default function CompleteProfileForm({ user, onComplete }) {
     
     try {
       // Usar el endpoint correcto según el rol
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://3.238.218.119:5000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       let endpoint, method, requestBody;
       
       if (userRole === 'empresa') {
