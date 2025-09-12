@@ -979,10 +979,10 @@ export default function InfiniteMenu({
             </p>
             <div className="flex items-center space-x-4 text-white/70 mb-4">
               <span className="text-sm bg-white/10 px-3 py-1 rounded-full">
-                🏢 {currentItem.ofertaData?.empresa || 'Empresa no especificada'}
+                🏢 {currentItem.ofertaData?.empresa?.nombre_empresa || 'Empresa no especificada'}
               </span>
               <span className="text-sm bg-white/10 px-3 py-1 rounded-full">
-                📍 {currentItem.ofertaData?.ubicacion || 'Ubicación no especificada'}
+                📍 {currentItem.ofertaData?.ubicacionNombres?.completo || 'Ubicación no especificada'}
               </span>
             </div>
             

@@ -40,13 +40,18 @@ export default function OfertasPage() {
 
   const fetchOfertas = async () => {
     try {
-      const { data } = await api.get('/api/ofertas');
+      const response = await api.get('/api/ofertas');
+      console.log('Response from API:', response);
+      
+      // El backend ahora devuelve { success: true, data: [...] }
+      const ofertas = response.data?.data || response.data || [];
+      
       // Transformar ofertas para el InfiniteMenu
-      const menuItems = data.map(oferta => ({
-        image: oferta.imagen || `https://via.placeholder.com/900x900.png?text=${encodeURIComponent(oferta.titulo)}`,
+      const menuItems = ofertas.map(oferta => ({
+        image: oferta.imagen || `/api/placeholder/900x900?text=${encodeURIComponent(oferta.titulo)}`,
         link: `/dashboard/postulaciones/crear/${oferta.id}`,
         title: oferta.titulo,
-        description: `${oferta.Empresa?.nombreEmpresa || 'Empresa'} • ${oferta.modalidad || 'Modalidad'} • ${formatUbicacion(oferta)}`,
+        description: `${oferta.empresa?.nombre_empresa || 'Empresa'} • ${oferta.modalidad || 'Modalidad'} • ${formatUbicacion(oferta)}`,
         ofertaData: oferta // Guardar datos completos para referencia
       }));
       
