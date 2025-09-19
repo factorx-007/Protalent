@@ -8,26 +8,30 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 // Esquema de validación basado en el rol
 const profileSchema = (rol) => {
-  // Campos comunes a todos los roles
-  const baseSchema = {
-    telefono: z.string().min(8, 'El teléfono debe tener al menos 8 dígitos'),
-    direccion: z.string().min(5, 'La dirección es requerida'),
-  };
-
   if (rol === 'estudiante' || rol === 'egresado') {
-    return z.object({
+    const baseSchema = {
       carrera: z.string().min(3, 'La carrera es requerida'),
-      anioIngreso: z.string()
-        .min(4, 'El año debe tener 4 dígitos')
-        .regex(/^\d{4}$/, 'Año inválido'),
       telefono: z.string().min(8, 'El teléfono debe tener al menos 8 dígitos'),
-      direccion: z.string().min(5, 'La dirección es requerida')
-    });
+    };
+
+    if (rol === 'egresado') {
+      return z.object({
+        ...baseSchema,
+        anio_egreso: z.string()
+          .min(4, 'El año de egreso debe tener 4 dígitos')
+          .regex(/^\d{4}$/, 'Año de egreso inválido')
+      });
+    } else {
+      return z.object({
+        ...baseSchema,
+        ciclo: z.string().optional()
+      });
+    }
   } 
   
   if (rol === 'empresa') {
     return z.object({
-      nombreEmpresa: z.string().min(3, 'El nombre de la empresa es requerido'),
+      nombre_empresa: z.string().min(3, 'El nombre de la empresa es requerido'),
       ruc: z.string()
         .min(11, 'El RUC debe tener 11 dígitos')
         .max(11, 'El RUC debe tener 11 dígitos')
@@ -38,7 +42,9 @@ const profileSchema = (rol) => {
     });
   }
   
-  return z.object(baseSchema);
+  return z.object({
+    telefono: z.string().min(8, 'El teléfono debe tener al menos 8 dígitos')
+  });
 };
 
 export default function CompleteProfileForm({ user, onComplete }) {
@@ -63,16 +69,16 @@ export default function CompleteProfileForm({ user, onComplete }) {
   }, [user, userRole]);
   
   const defaultValues = userRole === 'empresa' ? {
-    nombre_empresa: user?.nombre_empresa || user?.nombreEmpresa || '', // Mantener compatibilidad con ambos formatos
+    nombre_empresa: user?.nombre_empresa || user?.nombreEmpresa || '', 
     ruc: user?.ruc || '',
     rubro: user?.rubro || '',
     telefono: user?.telefono || '',
     direccion: user?.direccion || ''
   } : {
     carrera: user?.carrera || '',
-    anioIngreso: user?.anioIngreso || '',
-    telefono: user?.telefono || '',
-    direccion: user?.direccion || ''
+    anio_egreso: user?.anio_egreso || user?.año_egreso || '',
+    ciclo: user?.ciclo || '',
+    telefono: user?.telefono || ''
   };
   
   const { register, handleSubmit, formState: { errors } } = useForm({
@@ -106,16 +112,22 @@ export default function CompleteProfileForm({ user, onComplete }) {
         console.log('Datos a enviar al backend:', requestBody);
       } else {
         // Para estudiantes y egresados
-        endpoint = `${baseUrl}/api/estudiantes`; // Ruta corregida a /api/estudiantes
+        endpoint = `${baseUrl}/api/auth/completar-perfil-estudiante`;
         method = 'POST';
         requestBody = {
           carrera: formData.carrera,
-          anio_egreso: formData.anioIngreso, // Usando anio_egreso para consistencia
-          telefono: formData.telefono,
-          tipo: userRole, // 'estudiante' o 'egresado'
-          direccion: formData.direccion,
-          usuarioId: user.id // Asegurarse de incluir el ID del usuario
+          telefono: formData.telefono
         };
+
+        // Solo agregar año de egreso si es egresado
+        if (userRole === 'egresado' && formData.anio_egreso) {
+          requestBody.anio_egreso = formData.anio_egreso;
+        }
+
+        // Agregar ciclo si es estudiante y se proporcionó
+        if (userRole === 'estudiante' && formData.ciclo) {
+          requestBody.ciclo = formData.ciclo;
+        }
         
         console.log('Enviando datos de estudiante/egresado:', requestBody);
       }
@@ -215,68 +227,98 @@ export default function CompleteProfileForm({ user, onComplete }) {
         <div className="space-y-4">
           <div>
             <label htmlFor="carrera" className="block text-sm font-medium text-gray-700">
-              Carrera
+              Carrera *
             </label>
-            <input
+            <select
               id="carrera"
               name="carrera"
-              type="text"
               className={`mt-1 block w-full border ${errors.carrera ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
               {...register('carrera')}
-            />
+            >
+              <option value="">Selecciona tu carrera</option>
+              <option value="Ingeniería de Software">Ingeniería de Software</option>
+              <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
+              <option value="Ingeniería Industrial">Ingeniería Industrial</option>
+              <option value="Ingeniería Mecánica">Ingeniería Mecánica</option>
+              <option value="Ingeniería Electrónica">Ingeniería Electrónica</option>
+              <option value="Ingeniería Civil">Ingeniería Civil</option>
+              <option value="Administración de Empresas">Administración de Empresas</option>
+              <option value="Contabilidad">Contabilidad</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Diseño Gráfico">Diseño Gráfico</option>
+              <option value="Arquitectura">Arquitectura</option>
+              <option value="Otra">Otra</option>
+            </select>
             {errors.carrera && (
               <p className="mt-1 text-sm text-red-600">{errors.carrera.message}</p>
             )}
           </div>
 
-          <div>
-            <label htmlFor="anioIngreso" className="block text-sm font-medium text-gray-700">
-              {user.rol === 'estudiante' ? 'Año de Ingreso' : 'Año de Egreso'}
-            </label>
-            <input
-              id="anioIngreso"
-              name="anioIngreso"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]{4}"
-              maxLength={4}
-              className={`mt-1 block w-full border ${errors.anioIngreso ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-              {...register('anioIngreso')}
-            />
-            {errors.anioIngreso && (
-              <p className="mt-1 text-sm text-red-600">{errors.anioIngreso.message}</p>
-            )}
-          </div>
+          {user.rol === 'egresado' && (
+            <div>
+              <label htmlFor="anio_egreso" className="block text-sm font-medium text-gray-700">
+                Año de Egreso *
+              </label>
+              <input
+                id="anio_egreso"
+                name="anio_egreso"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                placeholder="2024"
+                className={`mt-1 block w-full border ${errors.anio_egreso ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+                {...register('anio_egreso')}
+              />
+              {errors.anio_egreso && (
+                <p className="mt-1 text-sm text-red-600">{errors.anio_egreso.message}</p>
+              )}
+            </div>
+          )}
+
+          {user.rol === 'estudiante' && (
+            <div>
+              <label htmlFor="ciclo" className="block text-sm font-medium text-gray-700">
+                Ciclo Actual (Opcional)
+              </label>
+              <select
+                id="ciclo"
+                name="ciclo"
+                className={`mt-1 block w-full border ${errors.ciclo ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+                {...register('ciclo')}
+              >
+                <option value="">Selecciona tu ciclo</option>
+                <option value="1">1er Ciclo</option>
+                <option value="2">2do Ciclo</option>
+                <option value="3">3er Ciclo</option>
+                <option value="4">4to Ciclo</option>
+                <option value="5">5to Ciclo</option>
+                <option value="6">6to Ciclo</option>
+                <option value="7">7mo Ciclo</option>
+                <option value="8">8vo Ciclo</option>
+                <option value="9">9no Ciclo</option>
+                <option value="10">10mo Ciclo</option>
+              </select>
+              {errors.ciclo && (
+                <p className="mt-1 text-sm text-red-600">{errors.ciclo.message}</p>
+              )}
+            </div>
+          )}
 
           <div>
             <label htmlFor="telefono" className="block text-sm font-medium text-gray-700">
-              Teléfono
+              Teléfono *
             </label>
             <input
               id="telefono"
               name="telefono"
               type="tel"
+              placeholder="987654321"
               className={`mt-1 block w-full border ${errors.telefono ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
               {...register('telefono')}
             />
             {errors.telefono && (
               <p className="mt-1 text-sm text-red-600">{errors.telefono.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="direccion" className="block text-sm font-medium text-gray-700">
-              Dirección
-            </label>
-            <input
-              id="direccion"
-              name="direccion"
-              type="text"
-              className={`mt-1 block w-full border ${errors.direccion ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
-              {...register('direccion')}
-            />
-            {errors.direccion && (
-              <p className="mt-1 text-sm text-red-600">{errors.direccion.message}</p>
             )}
           </div>
         </div>

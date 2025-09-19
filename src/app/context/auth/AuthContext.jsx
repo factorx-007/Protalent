@@ -64,23 +64,25 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     setLoading(true);
     try {
-    const { data } = await api.post('/api/auth/login', { email, password });
+      const { data } = await api.post('/api/auth/login', { email, password });
       localStorage.setItem('token', data.token);
       api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-      // Después de configurar el token y header, el user se cargará mediante el efecto de un nuevo AuthProvider o una recarga
-      // O podemos setearlo directamente aquí y luego redirigir
       setUser(data.user); 
-      setLoading(false); // Establecer loading false después de un login exitoso y antes de redirigir
+      setLoading(false);
       
-      // Redirigir según el rol del usuario
-      if (data.user.rol === 'empresa') {
+      // Usar la redirección proporcionada por el backend o fallback por defecto
+      if (data.redirectTo) {
+        router.push(data.redirectTo);
+      } else if (data.user.rol === 'ADMIN') {
+        router.push('/admin/dashboard');
+      } else if (data.user.rol === 'EMPRESA') {
         router.push('/empresas/dashboard');
       } else {
         router.push('/dashboard');
       }
     } catch (error) {
       console.error("[AuthContext] Error en login:", error.response?.data || error.message);
-      localStorage.removeItem('token'); // Limpiar token si el login falla
+      localStorage.removeItem('token');
       delete api.defaults.headers.common['Authorization'];
       setUser(null);
       setLoading(false);
@@ -132,21 +134,30 @@ export function AuthProvider({ children }) {
 
       const { data } = await api.post('/api/auth/google', { 
         credential,
-        rol: rol || 'estudiante' // Usar el rol proporcionado o 'estudiante' por defecto
+        rol: rol || 'estudiante'
       });
       
       if (data.token) {
         localStorage.setItem('token', data.token);
         api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-        setUser(data.usuario);
+        setUser(data.user);
         setLoading(false);
 
-        if (data.necesitaCompletarPerfil) {
-          setIncompleteUser(data.usuario);
-          setShowCompleteProfile(true);
+        // Usar la redirección proporcionada por el backend
+        if (data.redirectTo) {
+          router.push(data.redirectTo);
+        } else if (data.necesitaCompletarPerfil) {
+          // Redirigir a completar perfil según el rol
+          if (data.user.rol === 'EMPRESA') {
+            router.push('/auth/completar-perfil-empresa');
+          } else {
+            router.push('/perfil/completar');
+          }
         } else {
-          // Redirigir según el rol del usuario
-          if (data.usuario.rol === 'empresa') {
+          // Fallback por defecto
+          if (data.user.rol === 'ADMIN') {
+            router.push('/admin/dashboard');
+          } else if (data.user.rol === 'EMPRESA') {
             router.push('/empresas/dashboard');
           } else {
             router.push('/dashboard');

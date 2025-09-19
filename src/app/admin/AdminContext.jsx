@@ -19,7 +19,7 @@ export function AdminProvider({ children }) {
           // Verificar token con la API real
           const { data } = await adminApi.get('/admin/auth/verify');
           
-          if (data.user && data.user.rol === 'admin') {
+          if (data.user && data.user.rol === 'ADMIN') {
             setAdminUser(data.user);
           } else {
             // No es admin, limpiar token
@@ -49,7 +49,7 @@ export function AdminProvider({ children }) {
         password 
       });
       
-      if (data.user.rol !== 'admin') {
+      if (data.user.rol !== 'ADMIN') {
         throw new Error('Acceso no autorizado - Solo administradores');
       }
 
