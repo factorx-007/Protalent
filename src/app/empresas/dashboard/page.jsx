@@ -4,8 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/auth/AuthContext';
 import { empresaDashboardApi } from '../../lib/empresaApi';
-import { FiBriefcase, FiUsers, FiClock, FiTrendingUp, FiCheckCircle, FiDollarSign, FiMapPin } from 'react-icons/fi';
+import { useOfertas } from '@components/empresas/ofertas/hooks/useOfertas';
+import { FiBriefcase, FiUsers, FiClock, FiTrendingUp, FiCheckCircle, FiDollarSign, FiMapPin, FiEye, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Bar, Line } from 'react-chartjs-2';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
   Chart as ChartJS,
@@ -33,6 +37,18 @@ ChartJS.register(
   Filler
 );
 
+// Helper function to safely format dates
+const formatDate = (dateString) => {
+  if (!dateString) return 'No especificada';
+  try {
+    const date = new Date(dateString);
+    return format(date, 'd MMM yyyy', { locale: es });
+  } catch (error) {
+    console.error('Error formateando fecha:', error);
+    return 'Fecha inválida';
+  }
+};
+
 export default function EmpresasDashboard() {
   const router = useRouter();
   const { user } = useAuth();
@@ -48,6 +64,15 @@ export default function EmpresasDashboard() {
     tasaContratacion: 0,
     tiempoPromedioContratacion: 0,
   });
+
+  // Obtener ofertas recientes
+  const {
+    ofertas,
+    loading: ofertasLoading,
+    handleDeleteOferta,
+    toggleOfertaEstado,
+    refreshOfertas
+  } = useOfertas(user);
   
   // Estados adicionales para gráficos y listados
   const [postulacionesData, setPostulacionesData] = useState({
@@ -290,111 +315,110 @@ export default function EmpresasDashboard() {
 
       {/* Sección de Ofertas Recientes */}
       <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Ofertas Recientes</h2>
+          <Link 
+            href="/empresas/dashboard/ofertas"
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Ver todas las ofertas →
+          </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puesto</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Postulaciones</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {ofertasRecientes.map((oferta) => (
-                <tr key={oferta.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{oferta.titulo}</div>
-                    <div className="text-sm text-gray-500">{oferta.tipo}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(oferta.fecha).toLocaleDateString('es-ES', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {oferta.postulaciones} postulaciones
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      oferta.estado === 'Activa' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {oferta.estado}
-                    </span>
+              {ofertasLoading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-4 text-center">
+                    <div className="flex justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : ofertas.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <FiBriefcase className="h-12 w-12 text-gray-300 mb-2" />
+                      <p className="text-gray-500">No hay ofertas publicadas</p>
+                      <Link 
+                        href="/empresas/dashboard/ofertas/crear"
+                        className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        Crear primera oferta
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                ofertas.slice(0, 5).map((oferta) => (
+                  <tr key={oferta.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link 
+                        href={`/empresas/dashboard/ofertas/${oferta.id}`}
+                        className="hover:underline flex items-center"
+                      >
+                        <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-md flex items-center justify-center">
+                          <FiBriefcase className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900 hover:text-blue-600">
+                            {oferta.titulo}
+                          </div>
+                          <div className="text-sm text-gray-500 capitalize">
+                            {oferta.modalidad?.replace('_', ' ')}
+                          </div>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {oferta.ubicacion || 'No especificada'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {oferta.tipoTrabajo || 'Tiempo completo'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link 
+                        href={`/empresas/dashboard/ofertas/${oferta.id}/postulaciones`}
+                        className="hover:underline"
+                      >
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 hover:bg-green-200">
+                          {oferta.postulaciones?.length || 0} postulaciones
+                        </span>
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span 
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          oferta.estado === 'publicada' 
+                            ? 'bg-green-100 text-green-800' 
+                            : oferta.estado === 'cerrada'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {oferta.estado === 'publicada' 
+                          ? 'Publicada' 
+                          : oferta.estado === 'cerrada' 
+                            ? 'Cerrada' 
+                            : 'Borrador'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Sección de Actividad Reciente */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Actividad Reciente</h2>
-        </div>
-        <div className="divide-y divide-gray-200">
-          {actividadReciente.map((actividad) => (
-            <div 
-              key={actividad.id} 
-              className={`px-6 py-4 ${!actividad.leido ? 'bg-blue-50' : ''}`}
-            >
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className={`flex items-center justify-center h-10 w-10 rounded-full ${
-                    actividad.leido ? 'bg-gray-200' : 'bg-blue-100'
-                  }`}>
-                    {actividad.tipo === 'nueva_postulacion' && (
-                      <FiUsers className="h-5 w-5 text-blue-600" />
-                    )}
-                    {actividad.tipo === 'cambio_estado' && (
-                      <FiCheckCircle className="h-5 w-5 text-green-600" />
-                    )}
-                    {actividad.tipo === 'nuevo_candidato' && (
-                      <FiUsers className="h-5 w-5 text-purple-600" />
-                    )}
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">
-                    {actividad.mensaje}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(actividad.fecha).toLocaleString('es-ES', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-                {!actividad.leido && (
-                  <div className="ml-auto">
-                    <span className="h-2 w-2 rounded-full bg-blue-600 block"></span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="px-6 py-4 border-t border-gray-200">
-          <button 
-            className="text-sm font-medium text-blue-600 hover:text-blue-800"
-            onClick={() => router.push('/empresas/ofertas')}
-          >
-            Ver todas las ofertas →
-          </button>
         </div>
       </div>
     </div>
