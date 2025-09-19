@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../context/auth/AuthContext';
 import { useChatNotifications } from '../context/chat/ChatContext';
 import { FiSend, FiArrowLeft, FiUser } from 'react-icons/fi';
-import api from '../lib/axios';
+import api from '@lib/axios';
 import io from 'socket.io-client';
 
 export default function ChatPage() {

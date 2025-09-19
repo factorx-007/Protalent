@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import api from '../../lib/axios';
+import api from '@lib/axios';
 
 const AuthContext = createContext();
 
@@ -13,39 +13,60 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let isMounted = true; // Para evitar actualizaciones de estado en un componente desmontado
-    // console.log("[AuthContext] useEffect ejecutándose");
+    console.log('🔄 [AuthContext] Iniciando efecto de autenticación');
 
     const initializeAuth = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      console.log('🔑 [AuthContext] Verificando token en localStorage');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       // console.log("[AuthContext] Token obtenido de localStorage:", token);
 
       if (token && token !== 'null' && token !== 'undefined') {
-        // console.log("[AuthContext] Configurando token en Axios headers:", token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-        // console.log("[AuthContext] No hay token válido en localStorage, eliminando header de Axios.");
-      delete api.defaults.headers.common['Authorization'];
-    }
+        console.log('🔑 [AuthContext] Token encontrado, configurando en headers de Axios');
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } else {
+        console.log('⚠️ [AuthContext] No hay token válido en localStorage');
+        delete api.defaults.headers.common['Authorization'];
+      }
 
       if (!api.defaults.headers.common['Authorization']) {
-        // console.log("[AuthContext] No hay cabecera de autorización, estableciendo user a null.");
+        console.log('⚠️ [AuthContext] No hay cabecera de autorización, estableciendo usuario a null');
         if (isMounted) {
-            setUser(null);
-            setLoading(false);
+          console.log('👤 [AuthContext] Estableciendo usuario a null');
+          setUser(null);
+          setLoading(false);
         }
         return;
       }
 
-      // console.log("[AuthContext] Hay cabecera de autorización, intentando cargar perfil.");
+      console.log('🔍 [AuthContext] Hay cabecera de autorización, cargando perfil...');
       try {
+        console.log('📡 [AuthContext] Haciendo petición a /api/auth/perfil');
         const { data } = await api.get('/api/auth/perfil');
-        // console.log("[AuthContext] Perfil recibido:", data);
-        if (isMounted) setUser(data.user);
+        console.log('✅ [AuthContext] Perfil cargado exitosamente:', {
+          id: data.user?.id,
+          nombre: data.user?.nombre,
+          rol: data.user?.rol,
+          tieneEmpresa: !!data.user?.empresa
+        });
+        if (isMounted) {
+          console.log('👤 [AuthContext] Estableciendo usuario en el estado');
+          setUser(data.user);
+        }
       } catch (error) {
-        // console.error("[AuthContext] Error al cargar perfil:", error.response?.status, error.message);
-        if (isMounted) setUser(null); // Importante: si falla la carga del perfil, el usuario es null
-        // Si el error es 401 o 403, podría ser útil limpiar el token de localStorage aquí también por si acaso
+        console.error('❌ [AuthContext] Error al cargar perfil:', {
+          status: error.response?.status,
+          message: error.message,
+          error: error.response?.data
+        });
+        
+        if (isMounted) {
+          console.log('👤 [AuthContext] Estableciendo usuario a null por error');
+          setUser(null);
+        }
+        
+        // Si el error es 401 o 403, limpiamos el token
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          console.log('🔒 [AuthContext] Token inválido o expirado, limpiando...');
           localStorage.removeItem('token');
           delete api.defaults.headers.common['Authorization'];
         }

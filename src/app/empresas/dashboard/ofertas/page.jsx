@@ -2,102 +2,81 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiBriefcase, FiPlus, FiSearch, FiFilter, FiEdit2, FiTrash2, FiEye, FiClock, FiCheckCircle, FiXCircle, FiUsers, FiDollarSign } from 'react-icons/fi';
-import { useAuth } from '../../../context/auth/AuthContext';
-import api from '../../../lib/axios';
+import { useAuth } from '@context/auth/AuthContext';
+import { useOfertas } from '@components/empresas/ofertas/hooks/useOfertas';
+import { OfertasTable } from '@components/empresas/ofertas/components/OfertasTable';
+import { FiltrosOfertas } from '@components/empresas/ofertas/components/FiltrosOfertas';
+import { FiBriefcase } from 'react-icons/fi';
+import { toast } from 'react-hot-toast';
+import Head from 'next/head';
 
 export default function OfertasPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const [ofertas, setOfertas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    estado: 'todos',
-    modalidad: 'todos',
-    fecha: 'todos',
+  const { user, loading: authLoading } = useAuth();
+  
+  console.log('🔑 [OfertasPage] Usuario actual:', {
+    id: user?.id,
+    rol: user?.rol,
+    tieneEmpresa: !!user?.empresa,
+    empresaId: user?.empresa?.id || user?.empresaId
   });
+  
+  const {
+    ofertas,
+    loading,
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilters,
+    pagination,
+    handlePageChange,
+    handleDeleteOferta,
+    toggleOfertaEstado,
+    refreshOfertas
+  } = useOfertas(user, authLoading);
 
-  // Obtener ofertas de la empresa logueada
+  // Redirigir si el usuario no está autenticado o no es una empresa
   useEffect(() => {
-    const fetchOfertas = async () => {
-      try {
-        setLoading(true);
-        
-        // Verificar que el usuario sea una empresa
-        if (!user || user.rol !== 'empresa') {
-          console.error('Usuario no es una empresa:', user);
-          return;
-        }
-
-        // Obtener el ID de la empresa del usuario
-        const empresaId = user.Empresa?.id;
-        if (!empresaId) {
-          console.error('No se encontró ID de empresa para el usuario:', user);
-          return;
-        }
-
-        // Obtener ofertas de la empresa
-        const response = await api.get(`/api/ofertas/empresa/${empresaId}`);
-        setOfertas(response.data);
-        
-      } catch (error) {
-        console.error('Error al obtener ofertas:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchOfertas();
-    }
-  }, [user]);
-
-  // Filtrar ofertas
-  const filteredOfertas = ofertas.filter(oferta => {
-    const matchesSearch = oferta.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        oferta.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
+    console.log('🔄 [OfertasPage] Efecto de redirección ejecutándose');
     
-    const matchesFilters = 
-      (filters.estado === 'todos' || oferta.estado === filters.estado) &&
-      (filters.modalidad === 'todos' || oferta.modalidad === filters.modalidad);
-    
-    return matchesSearch && matchesFilters;
-  });
-
-  // Manejar cambio de estado
-  const toggleEstadoOferta = async (id) => {
-    try {
-      const oferta = ofertas.find(o => o.id === id);
-      const nuevoEstado = oferta.estado === 'activa' ? 'cerrada' : 'activa';
-      
-      await api.put(`/api/ofertas/${id}`, { estado: nuevoEstado });
-      
-      setOfertas(ofertas.map(oferta => 
-        oferta.id === id 
-          ? { ...oferta, estado: nuevoEstado } 
-          : oferta
-      ));
-    } catch (error) {
-      console.error('Error al cambiar estado de oferta:', error);
-    }
-  };
-
-  // Eliminar oferta
-  const eliminarOferta = async (id) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta oferta?')) {
+    // No hacer nada mientras está cargando la autenticación
+    if (authLoading) {
+      console.log('⏳ [OfertasPage] AuthContext aún cargando, esperando...');
       return;
     }
-
-    try {
-      await api.delete(`/api/ofertas/${id}`);
-      setOfertas(ofertas.filter(o => o.id !== id));
-    } catch (error) {
-      console.error('Error al eliminar oferta:', error);
+    
+    if (!user) {
+      console.log('🔴 [OfertasPage] No hay usuario, redirigiendo a login');
+      router.push('/auth/login');
+      return;
     }
+    
+    if (user.rol?.toUpperCase() !== 'EMPRESA') {
+      console.log(`🔴 [OfertasPage] Usuario no es una empresa (rol: ${user.rol}), redirigiendo a dashboard`);
+      router.push('/dashboard');
+      toast.error('No tienes permiso para acceder a esta sección');
+    } else {
+      console.log('🟢 [OfertasPage] Usuario válido, cargando ofertas...');
+    }
+  }, [user, router, authLoading]);
+
+  // Manejar cambios en los filtros
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
   };
 
-  // Formatear fecha
+  // Limpiar todos los filtros
+  const handleClearFilters = () => {
+    setFilters({
+      estado: 'todos',
+      modalidad: 'todos',
+      fecha: 'recientes',
+    });
+  };
+
+  // No necesitamos el efecto de carga aquí ya que lo manejamos en el hook useOfertas
+
+  // Formatear fecha para mostrar
   const formatDate = (dateString) => {
     if (!dateString) return 'No especificada';
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -109,184 +88,160 @@ export default function OfertasPage() {
     return oferta.Postulaciones?.length || 0;
   };
 
-  if (loading) {
+  // Si está cargando la autenticación o el usuario no está disponible, mostrar carga
+  if (authLoading || !user || user.rol?.toUpperCase() !== 'EMPRESA') {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Gestión de Ofertas</h1>
-          <button
-            onClick={() => router.push('/empresas/dashboard/ofertas/crear')}
-            className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <FiPlus className="mr-2 h-4 w-4" />
-            Crear Nueva Oferta
-          </button>
-        </div>
-
-        {/* Filtros y búsqueda */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="md:col-span-2">
-              <div className="relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiSearch className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md h-10 border p-2"
-                  placeholder="Buscar ofertas..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            <div>
-              <select
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md h-10 border"
-                value={filters.estado}
-                onChange={(e) => setFilters({...filters, estado: e.target.value})}
-              >
-                <option value="todos">Todos los estados</option>
-                <option value="activa">Activas</option>
-                <option value="cerrada">Cerradas</option>
-              </select>
-            </div>
-            <div>
-              <select
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md h-10 border"
-                value={filters.modalidad}
-                onChange={(e) => setFilters({...filters, modalidad: e.target.value})}
-              >
-                <option value="todos">Todas las modalidades</option>
-                <option value="presencial">Presencial</option>
-                <option value="remoto">Remoto</option>
-                <option value="híbrido">Híbrido</option>
-              </select>
+    <>
+      <Head>
+        <title>Mis Ofertas - Panel de Empresa | ProTalent</title>
+        <meta name="description" content="Gestiona tus ofertas de trabajo publicadas en ProTalent" />
+      </Head>
+      
+      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Encabezado */}
+          <div className="md:flex md:items-center md:justify-between mb-6">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                Mis Ofertas de Trabajo
+              </h1>
+              <p className="mt-2 text-sm text-gray-500">
+                Gestiona y publica ofertas de trabajo en tu empresa.
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Lista de ofertas */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {filteredOfertas.length > 0 ? (
-              filteredOfertas.map((oferta) => (
-                <li key={oferta.id} className="hover:bg-gray-50">
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                          <FiBriefcase className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-blue-600">{oferta.titulo}</div>
-                          <div className="text-sm text-gray-500">
-                            {oferta.ubicacionNombres?.completo || 'Ubicación no especificada'} • {oferta.modalidad}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {oferta.salario && `Salario: ${oferta.salario}`}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-4">
-                        <div className="text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <FiUsers className="mr-1" />
-                            {getPostulacionesCount(oferta)} postulaciones
-                          </div>
-                          <div className="flex items-center">
-                            <FiClock className="mr-1" />
-                            {formatDate(oferta.createdAt)}
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            oferta.estado === 'activa' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {oferta.estado === 'activa' ? (
-                              <>
-                                <FiCheckCircle className="mr-1" />
-                                Activa
-                              </>
-                            ) : (
-                              <>
-                                <FiXCircle className="mr-1" />
-                                Cerrada
-                              </>
-                            )}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => router.push(`/empresas/dashboard/ofertas/${oferta.id}/postulaciones`)}
-                            className="text-blue-600 hover:text-blue-800"
-                            title="Ver postulaciones"
-                          >
-                            <FiEye className="h-4 w-4" />
-                          </button>
-                          
-                          <button
-                            onClick={() => router.push(`/empresas/dashboard/ofertas/${oferta.id}/editar`)}
-                            className="text-gray-600 hover:text-gray-800"
-                            title="Editar oferta"
-                          >
-                            <FiEdit2 className="h-4 w-4" />
-                          </button>
-                          
-                          <button
-                            onClick={() => toggleEstadoOferta(oferta.id)}
-                            className={`${
-                              oferta.estado === 'activa' 
-                                ? 'text-red-600 hover:text-red-800' 
-                                : 'text-green-600 hover:text-green-800'
-                            }`}
-                            title={oferta.estado === 'activa' ? 'Cerrar oferta' : 'Abrir oferta'}
-                          >
-                            {oferta.estado === 'activa' ? (
-                              <FiXCircle className="h-4 w-4" />
-                            ) : (
-                              <FiCheckCircle className="h-4 w-4" />
-                            )}
-                          </button>
-                          
-                          <button
-                            onClick={() => eliminarOferta(oferta.id)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Eliminar oferta"
-                          >
-                            <FiTrash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ))
-            ) : (
-              <li className="px-4 py-8 text-center">
-                <div className="text-gray-500">
-                  <FiBriefcase className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p className="text-lg font-medium">No hay ofertas</p>
-                  <p className="text-sm">Crea tu primera oferta para comenzar a recibir postulaciones.</p>
+          {/* Filtros y búsqueda */}
+          <FiltrosOfertas 
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+
+          {/* Tabla de ofertas */}
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+            <OfertasTable 
+              ofertas={ofertas}
+              loading={loading}
+              onDelete={handleDeleteOferta}
+              onToggleEstado={toggleOfertaEstado}
+              empresaId={user?.empresa?.id || user?.empresaId}
+            />
+          </div>
+
+          {/* Paginación */}
+          {pagination.totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                    pagination.page === 1 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page === pagination.totalPages}
+                  className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                    pagination.page === pagination.totalPages 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Siguiente
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Mostrando <span className="font-medium">{ofertas.length > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0}</span> a{' '}
+                    <span className="font-medium">
+                      {Math.min(pagination.page * pagination.limit, pagination.total)}
+                    </span>{' '}
+                    de <span className="font-medium">{pagination.total}</span> resultados
+                  </p>
                 </div>
-              </li>
-            )}
-          </ul>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      disabled={pagination.page === 1}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
+                        pagination.page === 1 
+                          ? 'text-gray-300 cursor-not-allowed' 
+                          : 'text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="sr-only">Anterior</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      // Calcular el rango de páginas a mostrar
+                      let pageNum;
+                      if (pagination.totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pagination.page <= 3) {
+                        pageNum = i + 1;
+                      } else if (pagination.page >= pagination.totalPages - 2) {
+                        pageNum = pagination.totalPages - 4 + i;
+                      } else {
+                        pageNum = pagination.page - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            pagination.page === pageNum
+                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    
+                    <button
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      disabled={pagination.page === pagination.totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
+                        pagination.page === pagination.totalPages
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="sr-only">Siguiente</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
+

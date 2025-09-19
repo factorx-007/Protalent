@@ -10,21 +10,14 @@ const inter = Inter({ subsets: ['latin'] });
 
 export default function EmpresasDashboardLayout({ children }) {
   return (
-    <html lang="es">
-      <body 
-        className={`${inter.className} bg-gray-50 min-h-screen`}
-        suppressHydrationWarning={true}
-      >
-        <AuthProvider>
-          <div className="min-h-screen flex flex-col">
-            <EmpresasNavbar />
-            <main className="flex-1 pt-24">
-              {children}
-            </main>
-          </div>
-          <Toaster position="top-right" />
-        </AuthProvider>
-      </body>
-    </html>
+    <AuthProvider>
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <EmpresasNavbar />
+        <main className="flex-1 pt-24">
+          {children}
+        </main>
+      </div>
+      <Toaster position="top-right" />
+    </AuthProvider>
   );
 }

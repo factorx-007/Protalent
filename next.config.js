@@ -1,5 +1,18 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+
 const nextConfig = {
+  // Configuración de alias para las rutas de importación
+  webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname, 'src'),
+      '@components': path.resolve(__dirname, 'src/app/components'),
+      '@context': path.resolve(__dirname, 'src/app/context'),
+      '@lib': path.resolve(__dirname, 'src/app/lib'),
+    };
+    return config;
+  },
   images: {
     // Permitir imágenes de estos dominios
     domains: [
@@ -19,10 +32,6 @@ const nextConfig = {
   },
   // Habilitar la compresión GZIP y Brotli
   compress: true,
-  // Configuración adicional de webpack si es necesario
-  webpack: (config, { isServer }) => {
-    return config;
-  },
 };
 
 module.exports = nextConfig;

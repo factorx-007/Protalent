@@ -30,7 +30,7 @@ export default function DashboardNavbar() {
     return null;
   }
 
-  const dashboardHomeLink = user?.rol === 'empresa' ? '/dashboard/empresas' : '/dashboard';
+  const dashboardHomeLink = user?.rol?.toUpperCase() === 'EMPRESA' ? '/dashboard/empresas' : '/dashboard';
 
   return (
     <nav className="w-full bg-white/80 backdrop-blur-md border-b border-indigo-100 px-4 md:px-6 py-3 flex items-center justify-between shadow-xl sticky top-0 z-50">
@@ -98,7 +98,7 @@ export default function DashboardNavbar() {
                   </Menu.Item>
                 </div>
                 <div className="px-1 py-1">
-                  {user.rol === 'candidato' && (
+                  {user.rol?.toUpperCase() === 'CANDIDATO' && (
                     <Menu.Item>
                       {({ active }) => (
                         <Link href="/dashboard/postulaciones" className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-700'} group flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium`}>
@@ -108,7 +108,7 @@ export default function DashboardNavbar() {
                       )}
                     </Menu.Item>
                   )}
-                   {user.rol === 'empresa' && (
+                   {user.rol?.toUpperCase() === 'EMPRESA' && (
                     <Menu.Item>
                       {({ active }) => (
                         <Link href="/dashboard/empresas/ofertas" className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-700'} group flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium`}>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/auth/AuthContext';
 import { useChatNotifications } from '../context/chat/ChatContext';
 import { FiHeart, FiShare2, FiX } from 'react-icons/fi';
-import api from '../lib/axios';
+import api from '@lib/axios';
 
 export default function BlogPage() {
   const router = useRouter();

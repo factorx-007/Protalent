@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import prisma from '@/lib/prisma';
+// import { getServerSession } from 'next-auth/next';
+// import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+// import prisma from '@/lib/prisma';
 
 export async function POST(request) {
   try {
+    // Temporalmente deshabilitado hasta configurar NextAuth y Prisma
+    return NextResponse.json(
+      { message: 'Endpoint temporalmente deshabilitado' },
+      { status: 503 }
+    );
+    
+    /*
     const session = await getServerSession(authOptions);
     
     if (!session) {
@@ -124,6 +131,7 @@ export async function POST(request) {
       message: 'Perfil actualizado correctamente',
       user: updatedUser
     });
+    */
 
   } catch (error) {
     console.error('Error al completar perfil:', error);

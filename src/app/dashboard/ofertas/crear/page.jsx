@@ -14,7 +14,7 @@ export default function CrearOfertaPage() {
 
   useEffect(() => {
     // Si ya terminó de cargar y el usuario no existe o no es empresa, redirigir.
-    if (!loading && (!user || user.rol !== 'empresa')) {
+    if (!loading && (!user || user.rol.toUpperCase() !== 'EMPRESA')) {
       alert('Acceso denegado. Solo las empresas pueden crear ofertas.');
       router.push('/dashboard/ofertas'); // O a donde consideres apropiado
     }
@@ -36,7 +36,7 @@ export default function CrearOfertaPage() {
   }
 
   // Si después de cargar, el usuario no es empresa (aunque el useEffect ya debería haber redirigido)
-  if (!user || user.rol !== 'empresa') {
+  if (!user || user.rol.toUpperCase() !== 'EMPRESA') {
     // Este return es un fallback, el useEffect debería actuar primero.
     return (
         <div className="flex flex-col min-h-screen">

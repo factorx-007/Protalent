@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft, FiUser, FiMail, FiPhone, FiFileText, FiDownload, FiEye, FiCheckCircle, FiXCircle, FiClock, FiCalendar, FiMapPin, FiBriefcase, FiMessageSquare, FiStar, FiThumbsUp, FiThumbsDown } from 'react-icons/fi';
 import { useAuth } from '../../../../../../context/auth/AuthContext';
-import api from '../../../../../../lib/axios';
+import api from '@lib/axios';
 
 export default function PostulacionDetallePage() {
   const router = useRouter();

@@ -29,8 +29,10 @@ const preguntaSchema = z.discriminatedUnion('tipo', [preguntaTestSchema, pregunt
 const ofertaSchema = z.object({
   titulo: z.string().min(5, 'El título es obligatorio'),
   descripcion: z.string().min(10, 'La descripción es obligatoria'),
+  duracion: z.string().optional(),
   requisitos: z.string().optional(),
   modalidad: z.string().min(2, 'Selecciona una modalidad'),
+  estado: z.string().default('publicada'),
   salario: z.string().optional(),
   departamento: z.string().min(1, 'Selecciona un departamento'),
   provincia: z.string().min(1, 'Selecciona una provincia'),
@@ -66,8 +68,10 @@ export default function CrearOfertaPage() {
     defaultValues: {
       titulo: '',
       descripcion: '',
+      duracion: '',
       requisitos: '',
       modalidad: '',
+      estado: 'publicada',
       salario: '',
       departamento: '',
       provincia: '',
@@ -300,11 +304,38 @@ export default function CrearOfertaPage() {
                 {...register('modalidad')}
               >
                 <option value="">Selecciona una modalidad</option>
-                <option value="presencial">Presencial</option>
+                <option value="tiempo_completo">Tiempo completo</option>
+                <option value="medio_tiempo">Medio tiempo</option>
+                <option value="practica">Práctica</option>
+                <option value="freelance">Freelance</option>
                 <option value="remoto">Remoto</option>
                 <option value="hibrido">Híbrido</option>
               </select>
               {errors.modalidad && <p className="text-red-500 text-sm font-medium mt-1 animate-pulse">{errors.modalidad.message}</p>}
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <motion.div {...fieldAnim}>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Duración del contrato</label>
+              <input
+                className="w-full bg-gray-50 text-gray-900 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                placeholder="Ej: 6 meses, 1 año, Indefinido"
+                {...register('duracion')}
+              />
+              {errors.duracion && <p className="text-red-500 text-sm font-medium mt-1 animate-pulse">{errors.duracion.message}</p>}
+            </motion.div>
+            
+            <motion.div {...fieldAnim}>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Estado inicial</label>
+              <select
+                className="w-full bg-gray-50 text-gray-900 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                {...register('estado')}
+              >
+                <option value="publicada">Publicar inmediatamente</option>
+                <option value="borrador">Guardar como borrador</option>
+              </select>
+              {errors.estado && <p className="text-red-500 text-sm font-medium mt-1 animate-pulse">{errors.estado.message}</p>}
             </motion.div>
           </div>
 

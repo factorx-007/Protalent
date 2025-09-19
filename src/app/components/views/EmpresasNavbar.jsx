@@ -3,18 +3,38 @@
 import { useState, useEffect, Fragment } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, Transition } from '@headlessui/react';
-import { FiLogOut, FiUser, FiChevronDown, FiMenu, FiX, FiBriefcase, FiUsers, FiPieChart, FiFileText, FiSettings } from 'react-icons/fi';
+import { FiLogOut, FiUser, FiChevronDown, FiMenu, FiX, FiBriefcase, FiUsers, FiPieChart, FiFileText, FiHome } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '../../context/auth/AuthContext';
 
-// Navigation items with icons and paths
+// Ítems de navegación con iconos y rutas
 const navItems = [
-  { name: 'Inicio', path: '/empresas/dashboard', icon: '🏠' },
-  { name: 'Ofertas', path: '/empresas/dashboard/ofertas', icon: '💼' },
-  { name: 'Postulaciones', path: '/empresas/dashboard/postulaciones', icon: '📝' },
-  { name: 'Análisis', path: '/empresas/dashboard/analiticas', icon: '📊' },
+  { 
+    name: 'Inicio', 
+    path: '/empresas/dashboard', 
+    icon: <FiHome className="w-5 h-5" />,
+    activeIcon: <FiHome className="w-5 h-5 text-blue-600" />
+  },
+  { 
+    name: 'Ofertas', 
+    path: '/empresas/dashboard/ofertas', 
+    icon: <FiBriefcase className="w-5 h-5" />,
+    activeIcon: <FiBriefcase className="w-5 h-5 text-blue-600" />
+  },
+  { 
+    name: 'Postulaciones', 
+    path: '/empresas/dashboard/postulaciones', 
+    icon: <FiFileText className="w-5 h-5" />,
+    activeIcon: <FiFileText className="w-5 h-5 text-blue-600" />
+  },
+  { 
+    name: 'Análisis', 
+    path: '/empresas/dashboard/analiticas', 
+    icon: <FiPieChart className="w-5 h-5" />,
+    activeIcon: <FiPieChart className="w-5 h-5 text-blue-600" />
+  },
 ];
 
 export default function EmpresasNavbar() {
@@ -44,57 +64,66 @@ export default function EmpresasNavbar() {
 
   return (
     <header 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
         isScrolled 
-          ? 'bg-white/95 backdrop-blur-md shadow-lg py-2' 
-          : 'bg-white/80 backdrop-blur-sm py-3'
+          ? 'bg-white/95 backdrop-blur-md shadow-sm border-gray-100 py-2' 
+          : 'bg-white/90 backdrop-blur-sm border-transparent py-3'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/empresas/dashboard" className="flex items-center space-x-2">
-            <div className="w-10 h-10 relative">
+          <Link href="/empresas/dashboard" className="flex items-center space-x-3 group">
+            <div className="w-9 h-9 relative transition-transform group-hover:scale-105">
               <Image 
                 src="/logo.jpg" 
                 alt="ProTalent Empresas" 
                 fill 
-                className="rounded-lg object-cover"
+                className="rounded-lg object-cover shadow-sm"
                 priority
+                sizes="(max-width: 768px) 2.25rem, 2.25rem"
               />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              ProTalent Empresas
+              ProTalent <span className="hidden sm:inline">Empresas</span>
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Navegación de escritorio */}
           <nav className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center ${
-                  pathname === item.path
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <span className="mr-2 text-base">{item.icon}</span>
-                {item.name}
-                {pathname === item.path && (
-                  <motion.span 
-                    className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600"
-                    layoutId="activeNavItem"
-                    transition={{
-                      type: 'spring',
-                      stiffness: 300,
-                      damping: 24
-                    }}
-                  />
-                )}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const isActive = pathname === item.path || 
+                             (item.path !== '/empresas/dashboard' && 
+                              pathname.startsWith(item.path));
+              
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className={`relative px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center group ${
+                    isActive
+                      ? 'text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="mr-2">
+                    {isActive ? item.activeIcon : item.icon}
+                  </span>
+                  {item.name}
+                  {isActive && (
+                    <motion.span 
+                      className="absolute bottom-0 left-1/2 w-4/5 h-0.5 bg-blue-600 -translate-x-1/2 rounded-full"
+                      layoutId="activeNavItem"
+                      transition={{
+                        type: 'spring',
+                        stiffness: 300,
+                        damping: 24
+                      }}
+                    />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* User Menu */}
